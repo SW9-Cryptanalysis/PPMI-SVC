@@ -1,3 +1,5 @@
+import argparse
+
 def generate_csvs(input_dir : str = "ciphers"):
     """
     Generates separate CSV files for embeddings and mappings for training and 
@@ -235,4 +237,16 @@ def generate_csvs_plain_cipher():
             print(f"Finished processing {json_file}\n")
 
 if __name__ == "__main__":
-    generate_csvs()
+    parser = argparse.ArgumentParser(
+        description="Generate CSVs for cipher embeddings and mappings."
+    )
+    
+    parser.add_argument(
+        '--input_dir', 
+        type=str, 
+        default='ciphers', 
+        help="The directory containing the cipher JSON files (default: ciphers)."
+    )
+
+    args = parser.parse_args()
+    generate_csvs(input_dir=args.input_dir)
