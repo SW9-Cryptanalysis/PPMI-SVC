@@ -9,3 +9,5 @@ To generate PPMI embeddings: uv run generate_embeddings.py --input_dir [name of 
 To plot cipher embeddings: 
 
 uv run plot_embeddings.py --filepath <PATH_TO_CIPHER_FILE> {--simple | --cluster | --vc}
+
+To compare cipher & plaintext embeddings

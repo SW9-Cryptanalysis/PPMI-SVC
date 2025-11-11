@@ -97,7 +97,6 @@ def prepare_model_data(train_dir: str, max_ciphers: int = None):
 
     import os
     import glob
-    import numpy as np
     import pandas as pd
 
     # Use glob to find all embedding files (e.g., cipher-1_embeddings.csv)
@@ -346,7 +345,6 @@ def prepare_data_csv(dir, vowels_consonants=True):
 
     import os
     import glob
-    import numpy as np
     import pandas as pd
 
     # Load embeddings

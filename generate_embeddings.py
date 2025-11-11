@@ -1,5 +1,3 @@
-import argparse
-
 def generate_csvs(input_dir : str = "ciphers"):
     """
     Generates separate CSV files for embeddings and mappings for training and 
@@ -149,7 +147,7 @@ def generate_embeddings(cipher_json, window=1, embedding_size=20, plaintext=Fals
 
     return embeddings, vocab, vocab_index
 
-def generate_csvs_plain_cipher():
+def generate_csvs_plain_cipher(input_dir : str):
     """
     Generates embeddings for ciphertext and plaintext
     """
@@ -157,8 +155,8 @@ def generate_csvs_plain_cipher():
     import os
     import pandas as pd
 
-    input_dir = "monociphers"
-    output_dir = "monociphers_embeddings"
+    input_dir = input_dir
+    output_dir = "embeddings_plain_cipher"
 
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
@@ -183,10 +181,10 @@ def generate_csvs_plain_cipher():
                     cipher_to_letter[str(symbol)] = letter.upper()  # ensure uppercase
             
             # Generate embeddings
-            embeddings_cipher, vocab_cipher, vocab_index = generate_embeddings(cipher_json)
+            embeddings_cipher, vocab_cipher, _ = generate_embeddings(cipher_json)
 
             # Generate embeddings_plaintext
-            embeddings_plaintext, vocab_plaintext, vocab_index = generate_embeddings(cipher_json, plaintext=True)
+            embeddings_plaintext, vocab_plaintext, _ = generate_embeddings(cipher_json, plaintext=True)
             
             # Create output filename (without .json extension)
             base_name = os.path.splitext(json_file)[0]
@@ -237,6 +235,7 @@ def generate_csvs_plain_cipher():
             print(f"Finished processing {json_file}\n")
 
 if __name__ == "__main__":
+    import argparse
     parser = argparse.ArgumentParser(
         description="Generate CSVs for cipher embeddings and mappings."
     )
