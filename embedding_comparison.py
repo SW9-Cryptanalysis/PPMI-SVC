@@ -126,6 +126,8 @@ def read_mappings(mappings_csv_path: str) -> Dict[Any, str]:
 
 if __name__ == "__main__":
 	import argparse
+	import os
+	import re
 	from generate_embeddings import generate_csvs_plain_cipher
 	
 	parser = argparse.ArgumentParser(
@@ -139,11 +141,36 @@ if __name__ == "__main__":
 	
 	args = parser.parse_args()
 	generate_csvs_plain_cipher(args.input_dir)
+
+	emb_dir = 'embeddings_plain_cipher'
 	k = 10
-	j = 10
-	for i in range(j):
-		cipher_embs, plaintext_emb = read_embeddings(f'embeddings_plain_cipher/cipher-{i}_cipher_embeddings.csv', f'embeddings_plain_cipher/cipher-{i}_plaintext_embeddings.csv')
-		mappings = read_mappings(f'embeddings_plain_cipher/cipher-{i}_mappings.csv')
+
+	PREFIX_PATTERN = re.compile(r'(.+?)_(mappings|cipher_embeddings|plaintext_embeddings)\.csv$')
+
+	file_prefixes = set()
+
+	for filename in os.listdir(emb_dir):
+		match = PREFIX_PATTERN.match(filename)
+		if match:
+			file_prefixes.add(match.group(1))
+
+	for prefix in sorted(list(file_prefixes)):
+		print(f"\nProcessing cipher set with prefix: {prefix}")
+
+		cipher_emb_file = os.path.join(emb_dir, f'{prefix}_cipher_embeddings.csv')
+		plaintext_emb_file = os.path.join(emb_dir, f'{prefix}_plaintext_embeddings.csv')
+		mappings_file = os.path.join(emb_dir, f'{prefix}_mappings.csv')
+
+		if not (os.path.exists(cipher_emb_file) and \
+				os.path.exists(plaintext_emb_file) and \
+				os.path.exists(mappings_file)):
+			print(f"WARNING: Skipping {prefix} as one or more required files are missing.")
+			continue
+		cipher_embs, plaintext_emb = read_embeddings(cipher_emb_file, plaintext_emb_file)
+		mappings = read_mappings(mappings_file)
 		for letter in ['a', 'e', 'j']:
-			print(f"Top {k} similar cipher symbols for {letter.upper()}:")
-			find_k_similar_vecs(plaintext_emb[letter], cipher_embs, mappings, k)
+			if letter in plaintext_emb:
+				print(f"Top {k} similar cipher symbols for {letter.upper()} (from {prefix}):")
+				find_k_similar_vecs(plaintext_emb[letter], cipher_embs, mappings, k)
+			else:
+				print(f"Skipping {letter.upper()}: Plaintext embedding not found for this letter.")
