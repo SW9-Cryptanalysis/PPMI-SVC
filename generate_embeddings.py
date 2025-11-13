@@ -24,11 +24,11 @@ def generate_csvs(input_dir : str = "ciphers"):
     test_json_files = [f for f in json_files if f.startswith('test-cipher-')]
     
     # Process both sets of files using a helper function
-    _process_json_files(input_dir, train_json_files, train_dir, 'Training')
-    _process_json_files(input_dir, test_json_files, test_dir, 'Testing')
+    process_json_files(input_dir, train_json_files, train_dir, 'Training')
+    process_json_files(input_dir, test_json_files, test_dir, 'Testing')
 
 
-def _process_json_files(input_dir, json_list, output_dir, file_type_label):
+def process_json_files(input_dir, json_list, output_dir, file_type_label):
     """Helper function to load JSONs, generate data, and save two CSVs."""
     
     import json

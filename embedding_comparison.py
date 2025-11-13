@@ -25,17 +25,13 @@ def find_k_similar_vecs(target_vec: np.ndarray, all_vecs: Dict[Any, np.ndarray],
 	
 	# Sort by similarity and get top k
 	sorted_similarities = dict(sorted(similarities.items(), key=lambda item: item[1], reverse=True)[:k])
-
-	# --- MODIFIED PRINTING LOGIC ---
 	
 	for cipher_symbol_key, sim in sorted_similarities.items():
 		display_key = cipher_symbol_key # Default to cipher symbol key
 		
 		# Check if a mapping dictionary was provided
 		if mappings is not None:
-			# Look up the plaintext letter using the cipher symbol key
 			plaintext_letter = mappings.get(cipher_symbol_key, f"Symbol {cipher_symbol_key}")
-			# Format the display key as "Plaintext (Cipher Symbol)"
 			display_key = f"{plaintext_letter} (Symbol: {cipher_symbol_key})"
 
 		print(f"Match: {display_key}, Similarity: {sim:.4f}")
@@ -55,7 +51,6 @@ def read_embeddings(cipher_csv: str, plaintext_csv: str) -> Tuple[Dict[Any, np.n
 	"""
 	
 	try:
-		# 1. Load the CSV file into a Pandas DataFrame
 		c_df = pd.read_csv(cipher_csv)
 		p_df = pd.read_csv(plaintext_csv)
 	except FileNotFoundError:
@@ -65,15 +60,11 @@ def read_embeddings(cipher_csv: str, plaintext_csv: str) -> Tuple[Dict[Any, np.n
 		print(f"An error occurred during file loading: {e}")
 		return {}
 
-	# 2. Identify the embedding columns (assuming they are everything but the first column)
-	# This is safer than relying on 'dim_X' names.
 	symbol_col = c_df.columns[0]
 	c_embedding_cols = c_df.columns[1:]
 	letter_col = p_df.columns[0]
 	p_embedding_cols = p_df.columns[1:]
 	
-	# 3. Create the dictionary by iterating through DataFrame rows
-	# Convert the embedding columns to a NumPy array for each row.
 	symbol_to_vector = {}
 	for _, row in c_df.iterrows():
 		symbol = int(row[symbol_col])
