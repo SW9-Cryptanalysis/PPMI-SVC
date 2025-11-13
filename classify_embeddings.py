@@ -10,7 +10,7 @@ def train_svm_gpu(modelname : str):
     Trains an SVM classifier with RBF kernel using GPU to predict vowels/consonants
     
     Args:
-        vowels_consonants: if True, classify as vowel (0) or consonant (1)
+        modelname: name of the model
     """
 
     try:
@@ -218,98 +218,6 @@ def train_svm_cpu(vowels_consonants=True, hyperparam_tuning=False):
     print(f"Precision: {precision:.2f}")
     print(f"Recall: {recall:.2f}")
     print(f"F1-Score: {f1:.2f}")
-
-def prepare_glove_test_data(dir, vowels_consonants=True):
-    """
-    Prepare validation data for GloVe embeddings from all cipher JSON files in the specified folder
-    Args:
-        dir: path to the folder containing cipher JSON files
-        vowels_consonants: if True, classify as vowel (0) or consonant (1); else classify all letters
-    Returns:
-        x_val: np.ndarray of shape (n_samples, n_features)
-        y_val: np.ndarray of shape (n_samples,)
-    """
-    import os
-    import json
-    import numpy as np
-
-    # Expect a glove file in the validation folder named 'glove.txt'
-    glove_path = os.path.join(dir, 'glove.txt')
-    if not os.path.exists(glove_path):
-        raise FileNotFoundError(f"GloVe file not found at: {glove_path}")
-
-    # Read glove vectors. Each line: <symbol> <f1> <f2> ...
-    embeddings_map = {}
-    with open(glove_path, 'r', encoding='utf-8') as gf:
-        for ln in gf:
-            parts = ln.strip().split()
-            if not parts:
-                continue
-            # First token is symbol (cipher symbol as int string in this dataset)
-            sym = parts[0]
-            try:
-                vec = np.array([float(x) for x in parts[1:]], dtype=float)
-            except ValueError:
-                # skip malformed lines
-                continue
-            embeddings_map[sym] = vec
-
-    # Load cipher mapping JSON file from the same validation directory
-    # The user referenced cipher-quegpatte; prefer that file if present
-    cipher_json_path = os.path.join(dir, 'cipher-quegpatte.json')
-    if not os.path.exists(cipher_json_path):
-        # fallback: pick any cipher-*.json in dir
-        for fname in os.listdir(dir):
-            if fname.startswith('cipher-') and fname.endswith('.json'):
-                cipher_json_path = os.path.join(dir, fname)
-                break
-
-    if not os.path.exists(cipher_json_path):
-        raise FileNotFoundError(f"No cipher mapping JSON found in: {dir}")
-
-    with open(cipher_json_path, 'r', encoding='utf-8') as cf:
-        cipher_json = json.load(cf)
-
-    # Build reverse map: symbol (as string) -> letter
-    cipher_to_letter = {}
-    for letter, symbols in cipher_json.get('key', {}).items():
-        for s in symbols:
-            cipher_to_letter[str(s)] = letter.upper()
-
-    # Prepare data lists
-    x_list = []
-    y_list = []
-    VOWELS = set('AEIOU')
-
-    for sym, vec in embeddings_map.items():
-        # glove file symbols may be integers or strings; ensure matching
-        if sym in cipher_to_letter:
-            letter = cipher_to_letter[sym]
-        else:
-            # sometimes glove symbols may be numbers without leading zeros or as ints
-            if sym.isdigit() and str(int(sym)) in cipher_to_letter:
-                letter = cipher_to_letter[str(int(sym))]
-            else:
-                continue
-
-        x_list.append(vec)
-
-        if vowels_consonants:
-            y_list.append(0 if letter in VOWELS else 1)
-        else:
-            y_list.append(letter)
-
-    if not x_list:
-        raise ValueError(f"No matching glove embeddings found for cipher mapping in {dir}")
-
-    x_val = np.vstack(x_list)
-    if vowels_consonants:
-        y_val = np.array(y_list, dtype=int)
-    else:
-        # return letters as numpy array of strings
-        y_val = np.array(y_list, dtype='<U1')
-
-    return x_val, y_val
 
 def prepare_data_csv(dir, vowels_consonants=True):
     """
