@@ -208,18 +208,8 @@ __marimo__/
 
 .vscode
 *.png
-cipher.json
 ciphers
-input
-output
-output_new
-output_val
-validation_ciphers
 ciphers_train
 ciphers_test
-cipherstwo
-cuml_svc_vowels_consonants.joblib
-cuml_svc_vowels_consonants_ppmi.joblib
+*.joblib
 embeddings_plain_cipher
-cipher_embeddings
-monociphers
