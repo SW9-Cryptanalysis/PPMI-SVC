@@ -5,7 +5,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 import joblib
 import os
 
-def train_svm_gpu():
+def train_svm_gpu(modelname : str):
     """
     Trains an SVM classifier with RBF kernel using GPU to predict vowels/consonants
     
@@ -19,37 +19,24 @@ def train_svm_gpu():
         print("cuML library is not installed. Please install it to use GPU training.")
         return
 
-    x_train, y_train = prepare_model_data("ciphers_train", max_ciphers=5000)
+    x_train, y_train = prepare_model_data("ciphers_train")
     print(f"Training samples: {len(x_train)}")
 
     svm_model = SVC(kernel='rbf', random_state=42, class_weight='balanced', C=100, gamma=0.001)
     svm_model.fit(x_train, y_train)
     print("Model trained")
 
-    model_filename = 'cuml_svc_vowels_consonants_ppmi.joblib'
+    model_filename = f'{modelname}.joblib'
     try:
         joblib.dump(svm_model, model_filename)
         print(f"\nModel successfully saved to: {os.path.abspath(model_filename)}")
     except Exception as e:
         print(f"\nError saving model with joblib: {e}")
-    """
-    y_pred = svm_model.predict(x_test)
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred, average='binary')
-    recall = recall_score(y_test, y_pred, average='binary')
-    f1 = f1_score(y_test, y_pred, average='binary')
-
-    print("\n--- Final Test Set Results ---")
-    print(f"Accuracy: {accuracy:.2f}")
-    print(f"Precision: {precision:.2f}")
-    print(f"Recall: {recall:.2f}")
-    print(f"F1-Score: {f1:.2f}")
-    """
     
-def load_svm_gpu():
+def load_svm_gpu(modelname : str):
     from cuml.svm import SVC
 
-    model_filename = 'cuml_svc_vowels_consonants_ppmi.joblib'
+    model_filename = f'{modelname}.joblib'
     try:
         # Load the model object from the file
         loaded_model = joblib.load(model_filename)
@@ -57,9 +44,6 @@ def load_svm_gpu():
         
         #Test model on ppmi validation data
         x_test, y_test = prepare_model_data("ciphers_test")
-
-        #Test model on glove validation data
-        #x_test, y_test = prepare_glove_test_data("validation", vowels_consonants=True)
 
         y_pred = loaded_model.predict(x_test)
         
@@ -105,13 +89,10 @@ def prepare_model_data(train_dir: str, max_ciphers: int = None):
     if not emb_files:
         raise FileNotFoundError(f"No '*_embeddings.csv' files found in the directory: {train_dir}")
         
-    # --- NEW LOGIC: Limit the number of files ---
     if max_ciphers is not None and max_ciphers > 0:
-        # Sort to ensure we take the same files every time (e.g., cipher-1, cipher-2, ...)
         emb_files.sort()
         emb_files = emb_files[:max_ciphers]
         print(f"Limiting training to the first {len(emb_files)} ciphers.")
-    # ---------------------------------------------
 
     list_x_train, list_y_train = [], []
     VOWELS = list('AEIOU')
