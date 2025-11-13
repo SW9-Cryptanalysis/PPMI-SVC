@@ -7,13 +7,13 @@ import numpy as np
 from generate_embeddings import generate_embeddings, process_json_files, generate_csvs
 
 MOCK_JSON_DATA = {
-    "ciphertext": "A B C A B C D",
-    "plaintext": "ABCABCD",
+    "ciphertext": "0 1 2 0 1 2 3",
+    "plaintext": "abcabcd",
     "key": {
-        "a": ["A"],
-        "b": ["B"],
-        "c": ["C"],
-        "d": ["D"]
+        "a": [0],
+        "b": [1],
+        "c": [2],
+        "d": [3]
     }
 }
 
@@ -24,10 +24,10 @@ def mock_generate_embeddings(mocker):
     """
     # Create predictable mock embeddings (2 symbols, 2 dimensions)
     mock_embeddings = np.array([[0.1, 0.2], [0.3, 0.4]])
-    mock_vocab = ['A', 'B']
-    mock_vocab_plaintext = ['A', 'B', 'C']
+    mock_vocab = ['a', 'b']
+    mock_vocab_plaintext = ['a', 'b', 'c']
     
-    def fake_generate_embeddings(cipher_json, plaintext=False, **kwargs):
+    def fake_generate_embeddings(plaintext=False):
         if plaintext:
             # When plaintext=True, use a different vocab size for distinction
             return mock_embeddings, mock_vocab_plaintext, {'A': 0, 'B': 1, 'C': 2}
@@ -36,7 +36,7 @@ def mock_generate_embeddings(mocker):
     
     # Apply the mock globally
     return mocker.patch(
-        'generate_embeddings.generate_embeddings',  # Replace with your actual module path
+        'generate_embeddings.generate_embeddings',
         side_effect=fake_generate_embeddings
     )
 
@@ -59,15 +59,10 @@ def mock_os(mocker):
         'not_a_cipher.txt'
     ]
     
-    # *** REMOVE or COMMENT OUT THIS LINE THAT CAUSES RECURSION: ***
-    # mocker.patch('os.path.join', side_effect=lambda *args: os.path.join(*args)) 
-    
-    # Just mock os.makedirs since it's called inside the function
     mocker.patch('os.makedirs') 
     
     return {
         'listdir': mock_listdir
-        # No need to return the tmpdir paths unless used by the test directly
     }
 
 @pytest.fixture
@@ -87,8 +82,6 @@ def mock_file_io(mocker):
     
     return {'open': mock_open, 'to_csv': mock_to_csv}
 
-# --- Tests for generate_embeddings (Core Logic) ---
-
 def test_generate_embeddings_ciphertext():
     """Test co-occurrence and PPMI generation for ciphertext."""
     # Use small window and embedding size for predictable results
@@ -99,10 +92,8 @@ def test_generate_embeddings_ciphertext():
     )
     
     # Expected vocab based on MOCK_JSON_DATA["ciphertext"]
-    assert sorted(vocab) == ['A', 'B', 'C', 'D']
+    assert sorted(vocab) == ['0', '1', '2', '3']
     assert embeddings.shape == (4, 2)
-    # The actual PPMI/SVD values are complex to check directly, 
-    # so we primarily check shape and non-zero-ness for sanity.
     assert not np.all(embeddings == 0)
 
 def test_generate_embeddings_plaintext():
@@ -115,11 +106,9 @@ def test_generate_embeddings_plaintext():
     )
     
     # Expected vocab based on MOCK_JSON_DATA["plaintext"]
-    assert sorted(vocab) == ['A', 'B', 'C', 'D']
+    assert sorted(vocab) == ['a', 'b', 'c', 'd']
     assert embeddings.shape == (4, 2)
     assert not np.all(embeddings == 0)
-
-# --- Tests for process_json_files (Helper Logic) ---
 
 def test_process_json_files_saves_correct_csvs(mock_file_io):
     """Test that process_json_files correctly saves two CSVs per file."""
@@ -145,8 +134,6 @@ def test_process_json_files_saves_correct_csvs(mock_file_io):
     assert mock_file_io['to_csv'].call_args_list[2][0][0] == os.path.join(
         output_dir, 'cipher-2_embeddings.csv'
     )
-
-# --- Tests for generate_csvs (Main Logic) ---
 
 def test_generate_csvs_separates_files_and_calls_process(mocker, mock_os):
     """Test that generate_csvs correctly splits files and calls process_json_files."""
