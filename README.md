@@ -1,13 +1,19 @@
 # PPMI-SVC
-Positive Pointwise Mutual Information and Support Vector Classifier
+### Repository used to generate embeddings using PPMI, plotting embeddings, comparing embeddings between cipher symbols and plaintext letters, and training a support vector classifier. 
 
-uv sync
+Run ```uv sync``` to install necessary packages. 
 
-To generate PPMI embeddings: uv run generate_embeddings.py --input_dir [name of ciphers dir]
-    default input_dir: ciphers
+To generate PPMI embeddings run: 
+``` shell
+uv run generate_embeddings.py --input_dir CIPHERS_DIR
+default input_dir: ciphers
+```
+where default CIPHERS_DIR = ciphers.
 
 To plot cipher embeddings: 
-
-uv run plot_embeddings.py --filepath <PATH_TO_CIPHER_FILE> {--simple | --cluster | --vc}
+``` shell
+uv run plot_embeddings.py --filepath PATH_TO_CIPHER_FILE --simple | --cluster | --vc
+```
+where --simple indicates a regular plot, --cluster uses hdbscan to cluster vectors, and --vc color codes vowels/consonants.
 
 To compare cipher & plaintext embeddings

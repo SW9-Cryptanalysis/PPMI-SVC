@@ -140,8 +140,10 @@ if __name__ == "__main__":
 	args = parser.parse_args()
 	generate_csvs_plain_cipher(args.input_dir)
 	k = 10
-	cipher_embs, plaintext_emb = read_embeddings('embeddings_plain_cipher/cipher-0_cipher_embeddings.csv', 'embeddings_plain_cipher/cipher-0_plaintext_embeddings.csv')
-	mappings = read_mappings('embeddings_plain_cipher/cipher-0_mappings.csv')
-	for letter in ['a', 'e', 'j']:
-		print(f"Top {k} similar cipher symbols for {letter.upper()}:")
-		find_k_similar_vecs(plaintext_emb[letter], cipher_embs, mappings, k)
+	j = 10
+	for i in range(j):
+		cipher_embs, plaintext_emb = read_embeddings(f'embeddings_plain_cipher/cipher-{i}_cipher_embeddings.csv', f'embeddings_plain_cipher/cipher-{i}_plaintext_embeddings.csv')
+		mappings = read_mappings(f'embeddings_plain_cipher/cipher-{i}_mappings.csv')
+		for letter in ['a', 'e', 'j']:
+			print(f"Top {k} similar cipher symbols for {letter.upper()}:")
+			find_k_similar_vecs(plaintext_emb[letter], cipher_embs, mappings, k)

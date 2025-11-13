@@ -221,3 +221,5 @@ cipherstwo
 cuml_svc_vowels_consonants.joblib
 cuml_svc_vowels_consonants_ppmi.joblib
 embeddings_plain_cipher
+cipher_embeddings
+monociphers

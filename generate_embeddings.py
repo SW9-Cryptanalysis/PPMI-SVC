@@ -167,7 +167,7 @@ def generate_csvs_plain_cipher(input_dir : str):
     if not json_files:
         print("No JSON files found in the input directory")
     else:
-        for json_file in json_files:
+        for i, json_file in enumerate(json_files):
             print(f"Processing {json_file}...")
             
             # Load the cipher JSON
@@ -178,7 +178,7 @@ def generate_csvs_plain_cipher(input_dir : str):
             cipher_to_letter = {}
             for letter, symbols in cipher_json["key"].items():
                 for symbol in symbols:
-                    cipher_to_letter[str(symbol)] = letter.upper()  # ensure uppercase
+                    cipher_to_letter[str(symbol)] = letter.upper()
             
             # Generate embeddings
             embeddings_cipher, vocab_cipher, _ = generate_embeddings(cipher_json)
@@ -197,7 +197,7 @@ def generate_csvs_plain_cipher(input_dir : str):
                 })
 
             df_mappings = pd.DataFrame(mapping_data)
-            mappings_csv_path = os.path.join(output_dir, f"{base_name}_mappings.csv")
+            mappings_csv_path = os.path.join(output_dir, f"cipher-{i}_mappings.csv")
             df_mappings.to_csv(mappings_csv_path, index=False)
             print(f"Saved mappings ({len(df_mappings)} samples) to {mappings_csv_path}")
 
@@ -212,7 +212,7 @@ def generate_csvs_plain_cipher(input_dir : str):
                 cipher_emb_data.append(row)
 
             df_cipher_emb = pd.DataFrame(cipher_emb_data)
-            cipher_emb_csv_path = os.path.join(output_dir, f"{base_name}_cipher_embeddings.csv")
+            cipher_emb_csv_path = os.path.join(output_dir, f"cipher-{i}_cipher_embeddings.csv")
             df_cipher_emb.to_csv(cipher_emb_csv_path, index=False)
             print(f"Saved cipher embeddings ({len(df_cipher_emb)} samples) to {cipher_emb_csv_path}")
 
@@ -228,7 +228,7 @@ def generate_csvs_plain_cipher(input_dir : str):
                 plaintext_emb_data.append(row)
             
             df_plaintext_emb = pd.DataFrame(plaintext_emb_data)
-            plaintext_emb_csv_path = os.path.join(output_dir, f"{base_name}_plaintext_embeddings.csv")
+            plaintext_emb_csv_path = os.path.join(output_dir, f"cipher-{i}_plaintext_embeddings.csv")
             df_plaintext_emb.to_csv(plaintext_emb_csv_path, index=False)
             print(f"Saved plaintext embeddings ({len(df_plaintext_emb)} samples) to {plaintext_emb_csv_path}")
 
