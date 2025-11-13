@@ -27,3 +27,8 @@ python main.py MODEL_NAME --train | --test
 ```--train``` is used for training the model with specified name, ```--test``` to evaluate the model with given name. 
 
 ***NOTE: training or testing the model requires the cuML package from the RAPIDS library for GPU acceleration: https://docs.rapids.ai/. This cannot be installed through astral uv - see https://docs.rapids.ai/install/ for installation.***
+
+**To run tests:**
+``` shell
+uv run pytest test/
+```

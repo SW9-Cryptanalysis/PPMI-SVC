@@ -64,11 +64,8 @@ def process_json_files(input_dir, json_list, output_dir, file_type_label):
                     "cipher_symbol": cipher_symbol
                 })
         
-        # Generate embeddings (Assumes 'generate_embeddings' is available)
-        # embeddings is a NumPy array, vocab is a list of symbols
         embeddings, vocab, _ = generate_embeddings(cipher_json) 
         
-        # --- 1. Prepare and Save EMBEDDINGS CSV ---
         embeddings_data = []
         for i, symbol in enumerate(vocab):
             row = {"cipher_symbol": str(symbol)}
@@ -85,8 +82,6 @@ def process_json_files(input_dir, json_list, output_dir, file_type_label):
         emb_csv_path = os.path.join(output_dir, f"{base_name}_embeddings.csv")
         df_emb.to_csv(emb_csv_path, index=False)
 
-        # --- 2. Prepare and Save MAPPINGS CSV ---
-        # The mapping CSV is simply built from the list collected earlier
         df_map = pd.DataFrame(mappings_data)
         map_csv_path = os.path.join(output_dir, f"{base_name}_mappings.csv")
         df_map.to_csv(map_csv_path, index=False)
