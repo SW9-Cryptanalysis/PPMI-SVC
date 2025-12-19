@@ -5,7 +5,7 @@ def generate_csvs(input_dir : str = "ciphers"):
     and 'ciphers_test', respectively.
     """
     import os
-    train_dir = "ciphers_train"
+    train_dir = "ciphers_train_75k"
     test_dir = "ciphers_test"
 
     # Create output directories if they don't exist
@@ -20,7 +20,7 @@ def generate_csvs(input_dir : str = "ciphers"):
         return
 
     # Separate files into train and test lists
-    train_json_files = [f for f in json_files if f.startswith('cipher-')]
+    train_json_files = [f for f in json_files if f.startswith('c_')]
     test_json_files = [f for f in json_files if f.startswith('test-cipher-')]
     
     # Process both sets of files using a helper function

@@ -3,7 +3,14 @@ from sklearn.svm import SVC
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import joblib
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
+from tqdm import tqdm
 import os
+import glob
+import pandas as pd
+import numpy as np
+from datetime import datetime
 
 def train_svm_gpu(modelname : str):
     """
@@ -19,12 +26,26 @@ def train_svm_gpu(modelname : str):
         print("cuML library is not installed. Please install it to use GPU training.")
         return
 
-    x_train, y_train = prepare_model_data("ciphers_train")
+    x_train, y_train = prepare_model_data("ciphers_train_75k")
     print(f"Training samples: {len(x_train)}")
+    
+    #svm_model = SVC(kernel='rbf', random_state=42, class_weight='balanced', C=100, gamma=0.001)
+    svm_model = SVC(kernel='rbf', class_weight='balanced')
 
-    svm_model = SVC(kernel='rbf', random_state=42, class_weight='balanced', C=100, gamma=0.001)
+    start_time = datetime.now()
+    # strftime formats the time object into a string (Year-Month-Day Hour:Minute:Second)
+    print(f"Training started at: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+
     svm_model.fit(x_train, y_train)
     print("Model trained")
+
+    # --- END TIMING ---
+    end_time = datetime.now()
+    print(f"Training ended at:   {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    # Calculate duration
+    duration = end_time - start_time
+    print(f"Total training time: {duration}")
 
     model_filename = f'{modelname}.joblib'
     try:
@@ -32,7 +53,84 @@ def train_svm_gpu(modelname : str):
         print(f"\nModel successfully saved to: {os.path.abspath(model_filename)}")
     except Exception as e:
         print(f"\nError saving model with joblib: {e}")
+
+def train_svm_gpu_tune(modelname : str, hyperparam_tuning = True):
+    """
+    Trains an SVM classifier with RBF kernel using GPU to predict vowels/consonants
     
+    Args:
+        modelname: name of the model
+    """
+
+    try:
+        from cuml.svm import SVC
+    except ImportError:
+        print("cuML library is not installed. Please install it to use GPU training.")
+        return
+    x_train, y_train = prepare_model_data("ciphers_train_50k_new")
+    print(f"Training samples: {len(x_train)}")
+    svm_base = SVC(kernel='rbf', class_weight='balanced')
+    if hyperparam_tuning:
+        # Perform Hyperparameter Tuning
+        x_train_subset, _, y_train_subset, _ = train_test_split(
+            x_train, y_train,
+            test_size=0.95,
+            stratify=y_train
+        )
+        print(f"Tuning subset size: {len(x_train_subset)}")
+        
+        param_grid = {
+            'C': [0.1, 1, 10, 100], 
+            'gamma': ['auto']
+        }
+        
+        grid_search = GridSearchCV(
+            estimator=svm_base, 
+            param_grid=param_grid, 
+            scoring='f1',
+            cv=2,
+            verbose=2,
+            n_jobs=-1
+        )
+
+        print("\nStarting Hyperparameter Grid Search (Training multiple models)...")
+        grid_search.fit(x_train_subset, y_train_subset)
+        print("Grid Search complete.")
+
+        best_model = grid_search.best_estimator_
+
+        print("\n--- Hyperparameter Tuning Results ---")
+        print(f"Best Parameters Found: {grid_search.best_params_}")
+        print(f"Best Cross-Validation F1-Score: {grid_search.best_score_:.2f}")
+
+    else:
+        # Skip Tuning and use the base model
+        print("\nSkipping Hyperparameter Tuning. Training base RBF SVM.")
+        best_model = svm_base
+
+    start_time = datetime.now()
+    # strftime formats the time object into a string (Year-Month-Day Hour:Minute:Second)
+    print(f"Training started at: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+
+    # Train the final model
+    best_model.fit(x_train, y_train)
+    print("Model trained")
+
+    # --- END TIMING ---
+    end_time = datetime.now()
+    print(f"Training ended at:   {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    # Calculate duration
+    duration = end_time - start_time
+    print(f"Total training time: {duration}")
+
+    model_filename = f'{modelname}.joblib'
+    try:
+        joblib.dump(best_model, model_filename)
+        print(f"\nModel successfully saved to: {os.path.abspath(model_filename)}")
+    except Exception as e:
+        print(f"\nError saving model with joblib: {e}")
+
 def load_svm_gpu(modelname : str):
     from cuml.svm import SVC
 
@@ -43,7 +141,7 @@ def load_svm_gpu(modelname : str):
         print(f"Model loaded successfully from {model_filename}")
         
         #Test model on ppmi validation data
-        x_test, y_test = prepare_model_data("ciphers_test")
+        x_test, y_test = prepare_model_data("ciphers_test_400-800-25-30")
 
         y_pred = loaded_model.predict(x_test)
         
@@ -63,50 +161,20 @@ def load_svm_gpu(modelname : str):
     except Exception as e:
         print(f"Error loading model: {e}")
 
-def prepare_model_data(train_dir: str, max_ciphers: int = None):
+def process_single_cipher(emb_file: str, train_dir: str):
     """
-    Prepare training data (features and binary labels) from a specified number 
-    of cipher-specific files in the folder. All letters are classified as 
-    Vowel (0) or Consonant (1).
-
-    Args:
-        train_dir: Path to the folder containing the separate embeddings and mappings CSV files.
-        max_ciphers: The maximum number of ciphers (file pairs) to process. 
-                     If None, all found ciphers are used.
-
-    Returns:
-        x_train: np.ndarray of shape (n_samples, n_features) (Embedding Vectors)
-        y_train: np.ndarray of shape (n_samples,) (Binary Labels: 0=Vowel, 1=Consonant)
+    Helper function to process a single cipher file pair.
+    Must be defined at the top level for multiprocessing pickling.
     """
+    # 1. Determine corresponding mapping file name
+    base_name = os.path.basename(emb_file).replace('_embeddings.csv', '')
+    map_file = os.path.join(train_dir, f"{base_name}_mappings.csv")
 
-    import os
-    import glob
-    import pandas as pd
+    if not os.path.exists(map_file):
+        # Return None so we can filter it out later
+        return None
 
-    # Use glob to find all embedding files (e.g., cipher-1_embeddings.csv)
-    emb_files = glob.glob(os.path.join(train_dir, '*_embeddings.csv'))
-
-    if not emb_files:
-        raise FileNotFoundError(f"No '*_embeddings.csv' files found in the directory: {train_dir}")
-        
-    if max_ciphers is not None and max_ciphers > 0:
-        emb_files.sort()
-        emb_files = emb_files[:max_ciphers]
-        print(f"Limiting training to the first {len(emb_files)} ciphers.")
-
-    list_x_train, list_y_train = [], []
-    VOWELS = list('AEIOU')
-    
-    # Process all selected ciphers
-    for emb_file in emb_files:
-        # 1. Determine corresponding mapping file name
-        base_name = os.path.basename(emb_file).replace('_embeddings.csv', '')
-        map_file = os.path.join(train_dir, f"{base_name}_mappings.csv")
-
-        if not os.path.exists(map_file):
-            print(f"Warning: Skipping {emb_file}. Missing corresponding mapping file: {map_file}")
-            continue
-
+    try:
         # 2. Load Embeddings and Mappings
         emb_df = pd.read_csv(emb_file)
         map_df = pd.read_csv(map_file)
@@ -127,21 +195,74 @@ def prepare_model_data(train_dir: str, max_ciphers: int = None):
         # 5. Extract Labels (Y)
         Y_series = merged_df[PLAINTEXT_COL]
         
-        list_x_train.append(X)
-        list_y_train.append(Y_series)
+        return X, Y_series
 
+    except Exception as e:
+        print(f"Error processing {base_name}: {e}")
+        return None
+
+def prepare_model_data(train_dir: str, max_ciphers: int = None, max_workers: int = None):
+    """
+    Prepare training data using Multiprocessing.
+    
+    Args:
+        train_dir: Path to folder.
+        max_ciphers: Limit number of files.
+        max_workers: Number of CPU cores to use (default: None = all available).
+    """
+    
+    # Use glob to find all embedding files
+    emb_files = glob.glob(os.path.join(train_dir, '*_embeddings.csv'))
+
+    if not emb_files:
+        raise FileNotFoundError(f"No '*_embeddings.csv' files found in: {train_dir}")
+        
+    if max_ciphers is not None and max_ciphers > 0:
+        emb_files.sort()
+        emb_files = emb_files[:max_ciphers]
+        print(f"Limiting training to the first {len(emb_files)} ciphers.")
+
+    list_x_train = []
+    list_y_train = []
+
+    print(f"Starting multiprocessing with {len(emb_files)} files...")
+
+    # Create a partial function to pass the constant 'train_dir' to every worker
+    worker_func = partial(process_single_cipher, train_dir=train_dir)
+
+    # --- MULTIPROCESSING EXECUTION ---
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        # Use tqdm for a progress bar, executor.map returns an iterator
+        results = list(tqdm(executor.map(worker_func, emb_files), total=len(emb_files)))
+
+    # Filter out None results (skipped files or errors)
+    valid_results = [r for r in results if r is not None]
+
+    if not valid_results:
+        raise ValueError("No data was successfully processed.")
+
+    # Unpack the list of tuples [(X1, Y1), (X2, Y2)...]
+    list_x_train = [x for x, y in valid_results]
+    list_y_train = [y for x, y in valid_results]
+
+    print("Concatenating data...")
     # Concatenate all data
     x_train_df = pd.concat(list_x_train, ignore_index=True)
     y_train_series = pd.concat(list_y_train, ignore_index=True)
 
-    # Process labels: Binary classification (0=Vowel, 1=Consonant)
-    y_train_binary = (~y_train_series.astype(str).str.upper().isin(VOWELS)).astype(int)
+    # Process labels: Binary classification (1=Consonant, 0=Vowel)
+    # Note: 1=Consonant (inverse of Vowel)
+    VOWELS = list('AEIOU')
+    # IF YOU WANT TO TRAIN ON VOWELS: 
+    y_train_binary = (y_train_series.astype(str).str.upper().isin(VOWELS)).astype(int)
+    # IF YOU WANT TO TRAIN ON CONSONANTS: 
+    #y_train_binary = (~y_train_series.astype(str).str.upper().isin(VOWELS)).astype(int)
 
     # Convert to numpy arrays
     x_train = x_train_df.to_numpy()
     y_train = y_train_binary.to_numpy()
-    
-    print(f"Prepared {x_train.shape[0]} total training samples from {len(emb_files)} ciphers.")
+
+    print(f"Prepared {x_train.shape[0]} total training samples from {len(valid_results)} ciphers.")
 
     return x_train, y_train
 

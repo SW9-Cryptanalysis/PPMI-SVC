@@ -1,5 +1,5 @@
 import argparse
-from classify_embeddings import load_svm_gpu, train_svm_gpu 
+from classify_embeddings import load_svm_gpu, train_svm_gpu
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
